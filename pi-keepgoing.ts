@@ -148,7 +148,9 @@ export default function (pi: ExtensionAPI) {
 	pi.on("agent_before_settle", (event, ctx: ExtensionContext) => {
 		if (!enabled) return undefined;
 		if (event.outcome !== "completed") return undefined;
-		if (!event.context.canContinue) return undefined;
+		// No canContinue check here: at settle the context ends with the
+		// assistant message, so canContinue is false until our custom_message
+		// is appended. pi re-validates the final context after handlers run.
 		const messages = event.context.contextMessages as unknown as AssistantLike[];
 		const last = messages[messages.length - 1];
 		if (!last || last.role !== "assistant") return undefined;

@@ -21,10 +21,14 @@ dies mid-sentence, invisible token, no error anywhere. Agents porting or
 reviewing chat-template code hit this constantly, and every cut-off needs a
 manual "keep going".
 
-Verified against GLM-5.3-Flash on vLLM (the fork served on our cluster):
-asking the model to print its own turn-marker string verbatim cuts the reply
-at exactly that point, while a non-special token like the think marker
-streams through fine.
+Verified against GLM-5.3-Flash on vLLM (the fork served on our cluster).
+The cut is sampled, not deterministic: when asked to write the user-turn
+marker inline, the model usually spells it out as ordinary characters, but
+in roughly 40% of runs it starts the marker inside its thinking (right after
+an opening backtick), samples the special-token id, and the reply ends there
+with no text at all. Putting the marker literally into the prompt does not
+work as a trigger: it is tokenized as the special token and the model never
+sees it.
 
 ## Mechanism
 
@@ -32,7 +36,7 @@ pi fires `agent_before_settle` as the final actionable boundary of a run. The
 extension looks at the last assistant message and continues when all of this
 holds:
 
-- the run completed (not aborted, not errored) and can continue;
+- the run completed (not aborted, not errored);
 - `stopReason` is exactly `"stop"`, and the message carries no tool calls;
 - output stayed at or under half the model's `maxTokens` (near-cap stops are
   pi's overflow recovery business, not truncation);
@@ -48,9 +52,19 @@ tail you ended on") and returns `continue: true`, which buys one more model
 request. The boundary re-fires after that request, so a chain of cuts keeps
 getting resumed until the reply ends cleanly.
 
+The handler deliberately does not check `event.context.canContinue`: at
+settle the context ends with the assistant message, so pi reports
+`canContinue: false` until the continuation message is appended. pi
+re-validates the final context after all handlers have run.
+
 Loop guard: continuations are counted per user-message span (the extension's
 own marker messages are skipped when counting, everything else ends the
-span). Past the cap (3 by default) it gives up and notifies instead of
+span). This relies on how pi projects the session into
+`event.context.contextMessages`: a `custom_message` entry becomes a message
+with `role: "custom"` and its `customType` preserved (`createCustomMessage`
+in pi's `messages.js`, via `sessionEntryToContextMessages`); it only turns
+into a `role: "user"` message later, in `convertToLlm` (`llmMessages`). So
+`countTrailingRun` matches on `customType`, not on role or marker text. Past the cap (3 by default) it gives up and notifies instead of
 looping. The heuristic is deliberately conservative: a false positive costs
 one cheap follow-up where the model says it is done; a false negative is the
 old status quo of typing "keep going" yourself.
@@ -73,3 +87,16 @@ cp pi-keepgoing.ts ~/.pi/agent/extensions/
 ```
 
 No dependencies, no build step: pi loads TypeScript extensions directly.
+
+## Tests
+
+- `node scripts/unit.mjs`: unit tests for the exported heuristics
+  (`looksTruncated`, `classifyAssistantStop`, `countTrailingRun`), loading
+  the TypeScript through the jiti bundled with pi.
+- `scripts/smoke.sh`: end to end against the live GLM lane using the default
+  provider from `~/.pi/agent/settings.json`. Because the cut is sampled, each
+  phase retries (up to `ATTEMPTS=5`) until the model actually cuts; a cut
+  without a continuation fails immediately.
+
+Never write chat-template control-token strings literally in this repo,
+tests or prompts; construct them (printf, concatenation) or spell them out.
