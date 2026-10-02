@@ -66,7 +66,7 @@ const TAIL_SNIPPET_CHARS = 80;
 export const KEEPGOING_MARKER = "keepgoing-continue";
 
 /** Characters that read as a finished ending (prose close, code fence, quote, table pipe). */
-const COMPLETE_TAIL = new Set([".", "!", "?", ")", "]", "}", "'", '"', "`", "|", "…"]);
+const COMPLETE_TAIL = new Set([".", "!", "?", ")", "]", "}", "'", '"', "|", "…"]); // backtick handled by the balanced-span rule
 /** Characters that dangle when a generation is chopped: operators, opens, separators. */
 const CUT_TAIL = new Set([",", ";", ":", "(", "{", "[", "=", "<", ">", "&", "@", "#", "$", "~", "^", "\\", "+", "-", "/", "%"]);
 
@@ -80,16 +80,17 @@ export function looksTruncated(body: string): boolean {
 	// An odd number of fences means an unclosed code block.
 	const fences = (trimmed.match(/```/g) ?? []).length;
 	if (fences % 2 === 1) return true;
-	// Inline code spans: after stripping fence markers, an odd number of
-	// single backticks means an unclosed span. This is the classic cut shape
-	// for models quoting a control token: "the marker is `". A trailing
-	// backtick must not be mistaken for a completed inline span.
-	const ticks = (trimmed.replace(/```/g, "").match(/`/g) ?? []).length;
-	if (ticks % 2 === 1) return true;
 	const lastLine = trimmed.slice(trimmed.lastIndexOf("\n") + 1).trim();
 	// Horizontal rules and table separators are valid endings.
 	if (/^[-=_*]{3,}$/.test(lastLine) || /^\|[-\s|:]+\|$/.test(lastLine)) return false;
 	const last = trimmed[trimmed.length - 1];
+	// A trailing backtick closes an inline span only when the final line's
+	// backticks balance; an odd count means the last tick OPENS a span (the
+	// classic "the marker is `" cut shape). The check is scoped to the last
+	// line on purpose: quoting a cut-off tail earlier in the message embeds
+	// a stray backtick mid-text, and a whole-message parity count misreads
+	// that as an unclosed span even when the reply ended on a full stop.
+	if (last === "`") return lastLine.replace(/```/g, "").replace(/[^`]/g, "").length % 2 === 1;
 	if (COMPLETE_TAIL.has(last)) return false;
 	if (CUT_TAIL.has(last)) return true;
 	// Word-final: short one-liner replies are fine, anything longer is a cut.

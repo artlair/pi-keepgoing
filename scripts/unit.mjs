@@ -39,8 +39,23 @@ check("short one-liner word-final is not cut", looksTruncated("Sure, that works 
 check("dangling comma is cut", looksTruncated("The markers are user, assistant,"), true);
 check("empty body is cut", looksTruncated("   \n"), true);
 check("dangling opening backtick is cut", looksTruncated("The user-turn marker, written literally, is: `"), true);
-check("unclosed inline span is cut", looksTruncated("use `x` then `y"), true);
+check(
+	"short word-final reply wins over unbalanced ticks",
+	looksTruncated("use `x` then `y"),
+	false,
+);
+check(
+	"long word-final tail with dangling tick is cut",
+	looksTruncated(longProse + ", then the span opens again: `y"),
+	true,
+);
 check("balanced inline spans are not cut", looksTruncated("the `x` and `y` there."), false);
+check(
+	"odd quoted backticks mid-text do not cut a clean ending",
+	looksTruncated("My reply ended at `...is: ` cleanly. All done, happy to dig in next."),
+	false,
+);
+check("trailing closed inline span is not cut", looksTruncated("the marker reads `done`"), false);
 
 // classifyAssistantStop
 const thinkingOnly = {
