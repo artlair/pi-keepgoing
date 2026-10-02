@@ -38,6 +38,9 @@ check("word-final long tail is cut", looksTruncated(longProse), true);
 check("short one-liner word-final is not cut", looksTruncated("Sure, that works for me"), false);
 check("dangling comma is cut", looksTruncated("The markers are user, assistant,"), true);
 check("empty body is cut", looksTruncated("   \n"), true);
+check("dangling opening backtick is cut", looksTruncated("The user-turn marker, written literally, is: `"), true);
+check("unclosed inline span is cut", looksTruncated("use `x` then `y"), true);
+check("balanced inline spans are not cut", looksTruncated("the `x` and `y` there."), false);
 
 // classifyAssistantStop
 const thinkingOnly = {

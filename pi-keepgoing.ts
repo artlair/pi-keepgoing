@@ -80,6 +80,12 @@ export function looksTruncated(body: string): boolean {
 	// An odd number of fences means an unclosed code block.
 	const fences = (trimmed.match(/```/g) ?? []).length;
 	if (fences % 2 === 1) return true;
+	// Inline code spans: after stripping fence markers, an odd number of
+	// single backticks means an unclosed span. This is the classic cut shape
+	// for models quoting a control token: "the marker is `". A trailing
+	// backtick must not be mistaken for a completed inline span.
+	const ticks = (trimmed.replace(/```/g, "").match(/`/g) ?? []).length;
+	if (ticks % 2 === 1) return true;
 	const lastLine = trimmed.slice(trimmed.lastIndexOf("\n") + 1).trim();
 	// Horizontal rules and table separators are valid endings.
 	if (/^[-=_*]{3,}$/.test(lastLine) || /^\|[-\s|:]+\|$/.test(lastLine)) return false;
