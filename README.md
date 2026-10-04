@@ -44,7 +44,14 @@ holds:
   open bracket, or a word-final line without closing punctuation. A
   thinking-only stop (no text at all) always counts as cut, because the run
   produced nothing the user can read. Short one-liner replies that end
-  word-final ("Done") are left alone.
+  word-final ("Done") are left alone, and so are replies that stop exactly
+  on a markdown list item: a mid-stream chop lands inside a sentence, while
+  a self-contained final item ("...with the `<sha>-serve` tag convention")
+  is a finished list. The item's inline backticks must balance, so a span
+  opened inside the item still reads as cut. The trade-off: a cut that
+  lands exactly on an item boundary is missed (the accepted direction); and
+  if a false positive still slips through, the continuation prompt tells
+  the model to say so in one short line rather than inventing content.
 
 When it fires, the extension appends a `keepgoing-continue` custom message
 ("continue exactly where you stopped, do not repeat anything, here is the

@@ -57,6 +57,42 @@ check(
 );
 check("trailing closed inline span is not cut", looksTruncated("the marker reads `done`"), false);
 
+// List-item endings: a reply that stops exactly on a self-contained list
+// item is a finished list, not a mid-sentence chop. Regression for the
+// real-world false positive: a numbered plan whose last line was
+// "6. New publish.yml targeting the cluster registry with the
+// <sha>-serve tag convention" (word-final, no closing punctuation).
+const planList =
+	"Here is the sequence:\n\n1. Provision the build VM on the hypervisor\n2. Join it to the cluster, labeled and tainted for builds\n" +
+	"3. Add a runner scale set via the gitops repo\n4. Deploy the registry through the deploy loop with a local PV\n" +
+	"5. Copy the repos off the old registry\n6. New publish workflow targeting the cluster registry";
+check("numbered list ending word-final is not cut", looksTruncated(planList), false);
+check(
+	"bulleted list ending word-final is not cut",
+	looksTruncated(`${longProse}. Next steps:\n\n- port the smoke test to the new lane\n- wire the cap into the config`),
+	false,
+);
+check(
+	"indented numbered sub-item ending word-final is not cut",
+	looksTruncated(`${longProse}.\n  3. run the dry run against the target`),
+	false,
+);
+check(
+	"list item with balanced inline spans is not cut",
+	looksTruncated("steps:\n\n1. edit `publish.yml` in the app repo"),
+	false,
+);
+check(
+	"list item with a dangling operator is still cut",
+	looksTruncated("steps:\n\n1. set the registry to ("),
+	true,
+);
+check(
+	"list item with unbalanced inline backticks is still cut",
+	looksTruncated("steps:\n\n6. New publish workflow targeting `the cluster registry"),
+	true,
+);
+
 // classifyAssistantStop
 const thinkingOnly = {
 	role: "assistant",

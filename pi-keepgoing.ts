@@ -18,10 +18,10 @@
  * "stop", there are no tool calls, the output stayed far below the model's
  * maxTokens, and the visible tail looks cut off (unclosed code fence,
  * dangling operator or bracket, or a long word-final line without closing
- * punctuation), append a custom_message telling the model to continue
- * exactly where it stopped and return continue: true for one more request.
- * Thinking-only stops (no text at all) are always treated as cut: the run
- * produced nothing user-visible.
+ * punctuation that is not a markdown list item), append a custom_message
+ * telling the model to continue exactly where it stopped and return
+ * continue: true for one more request. Thinking-only stops (no text at
+ * all) are always treated as cut: the run produced nothing user-visible.
  *
  * Loop guard: each continuation is visible in the transcript as a
  * keepgoing-continue custom message. Counting trailing assistant messages
@@ -90,15 +90,31 @@ export function looksTruncated(body: string): boolean {
 	// line on purpose: quoting a cut-off tail earlier in the message embeds
 	// a stray backtick mid-text, and a whole-message parity count misreads
 	// that as an unclosed span even when the reply ended on a full stop.
-	if (last === "`") return lastLine.replace(/```/g, "").replace(/[^`]/g, "").length % 2 === 1;
+	if (last === "`") return inlineBackticksOdd(lastLine);
 	if (COMPLETE_TAIL.has(last)) return false;
 	if (CUT_TAIL.has(last)) return true;
-	// Word-final: short one-liner replies are fine, anything longer is a cut.
+	// Word-final: short one-liner replies are fine, anything longer is a cut,
+	// except when the final line opens a markdown list item. A mid-stream
+	// chop lands inside a sentence; a reply that stops exactly on a
+	// self-contained item boundary is a finished list (the classic false
+	// positive was a numbered plan ending "...the `<sha>-serve` tag
+	// convention"). The item's inline backticks must balance, so a span
+	// opened inside the item still reads as cut. The trade-off: a cut that
+	// lands exactly on an item boundary is missed (the accepted direction).
 	if (/[\p{L}\p{N}_]/u.test(last)) {
 		const short = trimmed.length <= SHORT_REPLY_CHARS && trimmed.split("\n").length <= 2;
+		if (!short && LIST_ITEM_LINE.test(lastLine) && !inlineBackticksOdd(lastLine)) return false;
 		return !short;
 	}
 	return false;
+}
+
+/** A final line that opens a markdown list item: bullet, numbered, or indented. */
+const LIST_ITEM_LINE = /^\s*(?:[-*+]|\d{1,3}[.)])\s+\S/;
+
+/** Odd inline-backtick count on the last line means the final span is unclosed. */
+function inlineBackticksOdd(lastLine: string): boolean {
+	return lastLine.replace(/```/g, "").replace(/[^`]/g, "").length % 2 === 1;
 }
 
 /**
@@ -180,7 +196,8 @@ export default function (pi: ExtensionAPI) {
 		const prompt =
 			`Your previous reply was cut off mid-stream (most likely an accidental end-of-sequence token, ` +
 			`for example from quoting a chat-template control string). Continue exactly where you stopped; ` +
-			`do not repeat or re-summarize anything. The reply ended with: ${JSON.stringify(verdict.tail)}`;
+			`do not repeat or re-summarize anything. If the reply actually ended cleanly, say so in one ` +
+			`short line instead of adding content. The reply ended with: ${JSON.stringify(verdict.tail)}`;
 		const draft = {
 			type: "custom_message" as const,
 			customType: KEEPGOING_MARKER,
