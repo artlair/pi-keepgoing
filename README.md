@@ -78,8 +78,8 @@ old status quo of typing "keep going" yourself.
 
 ## Usage
 
-- `/keepgoing` shows the current state, `/keepgoing on|off` toggles it for
-  the session (default on).
+- `/keepgoing` shows the current state (including the version),
+  `/keepgoing on|off` toggles it for the session (default on).
 - `PI_KEEPGOING=0` disables it at load; `PI_KEEPGOING_MAX=5` raises the
   per-prompt continuation cap.
 - Notifications tell you when a reply was resumed and when the cap was hit.
@@ -94,6 +94,21 @@ cp pi-keepgoing.ts ~/.pi/agent/extensions/
 ```
 
 No dependencies, no build step: pi loads TypeScript extensions directly.
+
+## Versioning and vendoring
+
+The extension carries a `VERSION` constant, bumped with the repo's git tag:
+`/keepgoing status` shows it, so any copy of the file identifies itself.
+Releases are `vX.Y.Z` tags on this repo.
+
+The file is vendored into my-salt (`formulas/pi/files/extensions/`, house
+re-vendor pattern: copy, never hand-edit the vendored copy) and installed by
+`formulas.pi` into both pi profile dirs on every machine (`~/.pi/agent` and
+`~/.pi/agent-reposit` extensions). To ship a change: merge it here, tag,
+then copy the file into my-salt on an `ai/*` branch, PR, merge, and apply
+`formulas.pi` with salt-axi. Hand copies into `~/.pi/agent/extensions/` are
+reverted by the next salt apply and miss the agent-reposit profile dir, so
+don't.
 
 ## Tests
 

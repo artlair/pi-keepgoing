@@ -65,6 +65,10 @@ const TAIL_SNIPPET_CHARS = 80;
 /** customType stamped onto the continuation messages this extension appends. */
 export const KEEPGOING_MARKER = "keepgoing-continue";
 
+/** Extension version, reported by /keepgoing status; the vendored copy in
+ *  my-salt (formulas/pi) is identifiable by it. Bump with the repo tag. */
+export const VERSION = "0.2.0";
+
 /** Characters that read as a finished ending (prose close, code fence, quote, table pipe). */
 const COMPLETE_TAIL = new Set([".", "!", "?", ")", "]", "}", "'", '"', "|", "…"]); // backtick handled by the balanced-span rule
 /** Characters that dangle when a generation is chopped: operators, opens, separators. */
@@ -230,7 +234,7 @@ export default function (pi: ExtensionAPI) {
 				ctx.ui.notify(`usage: /keepgoing [on|off|status] (currently ${enabled ? "on" : "off"})`, "warning");
 				return;
 			}
-			ctx.ui.notify(`pi-keepgoing is ${enabled ? "on" : "off"} (max ${maxContinuations()} continuations per prompt)`, "info");
+			ctx.ui.notify(`pi-keepgoing is ${enabled ? "on" : "off"} (v${VERSION}, max ${maxContinuations()} continuations per prompt)`, "info");
 		},
 	});
 }

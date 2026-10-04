@@ -12,7 +12,7 @@ import { createJiti } from "/usr/lib/node_modules/pi/node_modules/jiti/lib/jiti.
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const jiti = createJiti(import.meta.url);
-const { looksTruncated, classifyAssistantStop, countTrailingRun, KEEPGOING_MARKER } = await jiti.import(
+const { looksTruncated, classifyAssistantStop, countTrailingRun, KEEPGOING_MARKER, VERSION } = await jiti.import(
 	join(root, "pi-keepgoing.ts"),
 );
 
@@ -110,6 +110,7 @@ check(
 
 // countTrailingRun: custom messages appear in contextMessages as role
 // "custom" with customType preserved (see README).
+check("VERSION is semver-ish", /^\d+\.\d+\.\d+$/.test(VERSION), true);
 const user = { role: "user", content: [{ type: "text", text: "explain the template" }] };
 const cutAssistant = { role: "assistant", stopReason: "stop", content: [{ type: "text", text: longProse }] };
 const marker = { role: "custom", customType: KEEPGOING_MARKER, content: "Continue exactly where you stopped" };
