@@ -109,5 +109,7 @@ echo "== baseline (no extension) =="
 phase baseline
 
 echo
+# The extension is off by default (PI_KEEPGOING=1 opts in), so enable it
+# explicitly for this phase.
 echo "== with pi-keepgoing =="
-phase extended -e "$EXT"
+PI_KEEPGOING=1 phase extended -e "$EXT"

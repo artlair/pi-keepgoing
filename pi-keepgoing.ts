@@ -28,7 +28,9 @@
  * back to the last real user message (skipping those markers) bounds the
  * chain at --max continuations per user prompt (default 3); past the cap the
  * extension gives up and notifies instead of looping forever. A /keepgoing
- * command toggles the whole thing per session.
+ * command toggles the whole thing per session; the extension starts OFF and
+ * must be enabled with PI_KEEPGOING=1 at load or /keepgoing on for the
+ * session.
  *
  * The heuristic is deliberately conservative: a false positive (a complete
  * reply that happens to end without punctuation) costs one cheap follow-up
@@ -67,7 +69,7 @@ export const KEEPGOING_MARKER = "keepgoing-continue";
 
 /** Extension version, reported by /keepgoing status; the vendored copy in
  *  my-salt (formulas/pi) is identifiable by it. Bump with the repo tag. */
-export const VERSION = "0.2.0";
+export const VERSION = "0.3.0";
 
 /** Characters that read as a finished ending (prose close, code fence, quote, table pipe). */
 const COMPLETE_TAIL = new Set([".", "!", "?", ")", "]", "}", "'", '"', "|", "…"]); // backtick handled by the balanced-span rule
@@ -170,7 +172,10 @@ export function countTrailingRun(messages: AssistantLike[]): [number, number] {
 }
 
 export default function (pi: ExtensionAPI) {
-	let enabled = process.env.PI_KEEPGOING !== "0";
+	// Off by default: on some models and setups the truncation heuristic
+	// fires more often than it helps. Opt in with PI_KEEPGOING=1 at load, or
+	// /keepgoing on for the session.
+	let enabled = process.env.PI_KEEPGOING === "1";
 
 	pi.on("agent_before_settle", (event, ctx: ExtensionContext) => {
 		if (!enabled) return undefined;

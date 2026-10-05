@@ -79,8 +79,9 @@ old status quo of typing "keep going" yourself.
 ## Usage
 
 - `/keepgoing` shows the current state (including the version),
-  `/keepgoing on|off` toggles it for the session (default on).
-- `PI_KEEPGOING=0` disables it at load; `PI_KEEPGOING_MAX=5` raises the
+  `/keepgoing on|off` toggles it for the session (default off: it gets in
+  the way on setups where the heuristic fires without helping).
+- `PI_KEEPGOING=1` enables it at load; `PI_KEEPGOING_MAX=5` raises the
   per-prompt continuation cap.
 - Notifications tell you when a reply was resumed and when the cap was hit.
 
